@@ -1,0 +1,15 @@
+html {
+  background-image: url('https://bing.img.run/1920x1080.php');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+}
+
+body {
+  text-align: center;
+  border-style: solid;
+  border-radius: 10px;
+  margin-left: 25%;
+  margin-right: 25%;
+}
