@@ -6,7 +6,7 @@ test_list = ["任务1", "任务2", "任务3"] #这个纯测试代码，后期会
 
 @app.route('/')
 def index():
-    return ('Welcome to NewTasks')
+    return render_template('index.html')
 
 @app.route('/show/tasks')
 def show_tasks():
