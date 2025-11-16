@@ -12,6 +12,8 @@ body {
   border-radius: 10px;
   margin-left: 25%;
   margin-right: 25%;
+  background-color: black;
+  color: white;
 }
 
 .navbar {
@@ -19,7 +21,7 @@ body {
   margin: 0;
   padding: 0;
   width: 200px;
-  background-color: #f1f1f1;
+  background-color: black;
   height: auto;
   position: fixed;
   overflow: auto;
@@ -28,7 +30,7 @@ body {
 ul.navbar li a {
   display: block;
   width: 60px;
-  color: #000;
+  color: white;
   padding: 8px 16px;
   text-decoration: none;
 }
