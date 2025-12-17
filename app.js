@@ -6,6 +6,7 @@ var logger = require('morgan');
 
 var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/users');
+var { initDB } = require('./lib/lib_db.js');
 
 var app = express();
 
@@ -19,8 +20,29 @@ app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
-app.use('/', indexRouter);
-app.use('/users', usersRouter);
+// Initialize database synchronously
+let db;
+initDB().then(database => {
+  db = database;
+}).catch(err => {
+  console.error('Failed to initialize database:', err);
+  process.exit(1);
+});
+
+// Setup routes with lazy database access
+app.use('/', function(req, res, next) {
+  if (!db) {
+    return res.status(503).send('Database not ready');
+  }
+  indexRouter(db)(req, res, next);
+});
+
+app.use('/users', function(req, res, next) {
+  if (!db) {
+    return res.status(503).send('Database not ready');
+  }
+  usersRouter(db)(req, res, next);
+});
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {

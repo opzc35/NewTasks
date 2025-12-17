@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title> <%= title %> - NewTasks </title>
+    <link rel="stylesheet" href="/stylesheets/style.css">
+</head>
+<body> 
+    
+    <div class="app-container">
+        <h1>任务详情</h1>
+        <div class="task-details" id="task-details"></div>
+    </div>
+    <script>
+        function loadTaskDetails() {
+            const taskId = <%= taskId %>;
+            fetch(`/api/watch/${taskId}`)
+                .then(response => response.json())
+                .then(data => {
+                    console.log(data);
+                    const taskDetails = document.getElementById("task-details");
+                    taskDetails.innerHTML = '';
+                    
+                    const titleElement = document.createElement("h2");
+                    titleElement.textContent = data.title;
+                    taskDetails.appendChild(titleElement);
+
+                    const descriptionElement = document.createElement("p");
+                    descriptionElement.textContent = data.description;
+                    taskDetails.appendChild(descriptionElement);
+                })
+                .catch(error => {
+                    console.error('Error loading task details:', error);
+                });
+        }
+        loadTaskDetails();
+    </script>
+</body>

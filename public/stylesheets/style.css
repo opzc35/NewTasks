@@ -37,16 +37,13 @@ body {
     height: 80vh; /* Make the container a fixed height */
 }
 
-header {
-    padding: 24px;
-    border-bottom: 1px solid var(--border-color);
-}
-
-header h1 {
+.app-container h1 {
     margin: 0;
     font-size: 28px;
     font-weight: 600;
     color: var(--primary-color);
+    margin-left: 10%;
+    margin-top: 3%;
 }
 
 main {
@@ -55,10 +52,12 @@ main {
     padding: 24px;
 }
 
-#task-list {
+#task-list, #task-details {
     list-style: none;
     padding: 0;
     margin: 0;
+    margin-top: 3%;
+    margin-left: 10%;
 }
 
 .task-item {
