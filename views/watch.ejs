@@ -3,37 +3,241 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title> <%= title %> - NewTasks </title>
+    <title><%= title %> - NewTasks</title>
     <link rel="stylesheet" href="/stylesheets/style.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>✓</text></svg>">
 </head>
-<body> 
-    
+<body>
     <div class="app-container">
-        <h1>任务详情</h1>
-        <div class="task-details" id="task-details"></div>
+        <a href="/" class="back-button">
+            <span>← 返回任务列表</span>
+        </a>
+        
+        <h1>📋 任务详情</h1>
+        
+        <div class="task-details" id="task-details">
+            <!-- Task details will be loaded here dynamically -->
+            <div class="loading-container" style="text-align: center; padding: 40px;">
+                <div class="loading" style="margin: 0 auto;"></div>
+                <p style="color: var(--subtle-text-color); margin-top: 16px;">加载任务详情中...</p>
+            </div>
+        </div>
+        
+        <button class="delete-task" id="delete-task" onclick="confirmDelete()">
+            🗑️ 删除任务
+        </button>
     </div>
-    <script>
-        function loadTaskDetails() {
-            const taskId = <%= taskId %>;
-            fetch(`/api/watch/${taskId}`)
-                .then(response => response.json())
-                .then(data => {
-                    console.log(data);
-                    const taskDetails = document.getElementById("task-details");
-                    taskDetails.innerHTML = '';
-                    
-                    const titleElement = document.createElement("h2");
-                    titleElement.textContent = data.title;
-                    taskDetails.appendChild(titleElement);
 
-                    const descriptionElement = document.createElement("p");
-                    descriptionElement.textContent = data.description;
-                    taskDetails.appendChild(descriptionElement);
+    <script>
+        // Get task ID from server-side rendering
+        const pageTaskId = '<%= taskId %>';
+        
+        // Load task details on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            loadTaskDetails();
+        });
+
+        // Load task details from API
+        function loadTaskDetails() {
+            fetch(`/api/watch/${pageTaskId}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('加载任务失败');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    const taskDetails = document.getElementById("task-details");
+                    
+                    if (!data) {
+                        taskDetails.innerHTML = `
+                            <div class="empty-state">
+                                <p style="color: var(--danger-color); font-weight: 600;">❌ 任务不存在</p>
+                                <p style="font-size: 14px;">该任务可能已被删除</p>
+                                <a href="/" class="back-button" style="display: inline-block; margin-top: 20px;">返回首页</a>
+                            </div>
+                        `;
+                        return;
+                    }
+                    
+                    // Create beautiful task details layout
+                    taskDetails.innerHTML = `
+                        <div style="animation: slideIn 0.4s ease-out;">
+                            <span class="detail-label">任务标题</span>
+                            <h2>${escapeHtml(data.title)}</h2>
+                            
+                            <span class="detail-label" style="margin-top: 24px; display: block;">任务描述</span>
+                            <p>${data.description ? escapeHtml(data.description) : '<span style="color: var(--subtle-text-color); font-style: italic;">暂无描述</span>'}</p>
+                            
+                            <div style="display: flex; gap: 12px; margin-top: 24px; padding: 16px; background: var(--background-color); border-radius: 12px;">
+                                <div style="flex: 1;">
+                                    <span class="detail-label">任务ID</span>
+                                    <p style="background: white; padding: 8px 12px; border-radius: 8px; margin-top: 4px; font-family: monospace; font-size: 14px; min-height: auto; border: 1px solid var(--border-color);">
+                                        #${data.id}
+                                    </p>
+                                </div>
+                                <div style="flex: 1;">
+                                    <span class="detail-label">状态</span>
+                                    <p style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white; padding: 8px 12px; border-radius: 8px; margin-top: 4px; text-align: center; font-weight: 600; min-height: auto; border: none;">
+                                        ✓ 活跃
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    `;
                 })
                 .catch(error => {
-                    console.error('Error loading task details:', error);
+                    console.error('加载任务详情时出错:', error);
+                    const taskDetails = document.getElementById("task-details");
+                    taskDetails.innerHTML = `
+                        <div class="empty-state">
+                            <p style="color: var(--danger-color); font-weight: 600;">❌ 加载失败</p>
+                            <p style="font-size: 14px;">请检查网络连接或刷新页面重试</p>
+                            <button onclick="loadTaskDetails()" style="margin-top: 20px; padding: 12px 24px; background: var(--primary-color); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                                🔄 重试
+                            </button>
+                        </div>
+                    `;
                 });
         }
-        loadTaskDetails();
+
+        // Confirm and delete task
+        function confirmDelete() {
+            // Create custom confirmation modal
+            const modal = document.createElement('div');
+            modal.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.5);
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                z-index: 10000;
+                animation: fadeIn 0.2s ease-out;
+            `;
+            
+            modal.innerHTML = `
+                <div style="
+                    background: white;
+                    padding: 32px;
+                    border-radius: 20px;
+                    max-width: 400px;
+                    width: 90%;
+                    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
+                    animation: slideIn 0.3s ease-out;
+                ">
+                    <h2 style="margin: 0 0 16px 0; color: var(--danger-color); font-size: 24px;">
+                        ⚠️ 确认删除
+                    </h2>
+                    <p style="margin: 0 0 24px 0; color: var(--text-color); line-height: 1.6;">
+                        你确定要删除这个任务吗？<br>
+                        <strong style="color: var(--danger-color);">此操作无法撤销！</strong>
+                    </p>
+                    <div style="display: flex; gap: 12px;">
+                        <button onclick="this.closest('div[style*=fixed]').remove()" style="
+                            flex: 1;
+                            padding: 12px;
+                            background: var(--border-color);
+                            color: var(--text-color);
+                            border: none;
+                            border-radius: 12px;
+                            font-weight: 600;
+                            cursor: pointer;
+                            transition: all 0.2s ease;
+                        " onmouseover="this.style.background='#d1d5db'" onmouseout="this.style.background='var(--border-color)'">
+                            取消
+                        </button>
+                        <button onclick="deleteTask()" style="
+                            flex: 1;
+                            padding: 12px;
+                            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+                            color: white;
+                            border: none;
+                            border-radius: 12px;
+                            font-weight: 600;
+                            cursor: pointer;
+                            transition: all 0.2s ease;
+                        " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(239, 68, 68, 0.4)'" onmouseout="this.style.transform=''; this.style.boxShadow=''">
+                            确认删除
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            // Close on backdrop click
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.remove();
+                }
+            });
+        }
+
+        // Delete task
+        function deleteTask() {
+            // Remove modal
+            document.querySelector('div[style*="fixed"]')?.remove();
+            
+            // Show loading state
+            const deleteButton = document.getElementById('delete-task');
+            deleteButton.disabled = true;
+            deleteButton.innerHTML = '<span class="loading"></span> 删除中...';
+            
+            fetch(`/api/delete/${pageTaskId}`, { 
+                method: 'DELETE' 
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('删除失败');
+                }
+                return response.text();
+            })
+            .then(() => {
+                showNotification('✅ 任务已成功删除！', 'success');
+                setTimeout(() => {
+                    window.location.href = '/';
+                }, 1500);
+            })
+            .catch(error => {
+                console.error('删除任务时出错:', error);
+                showNotification('❌ 删除任务失败，请重试', 'error');
+                deleteButton.disabled = false;
+                deleteButton.innerHTML = '🗑️ 删除任务';
+            });
+        }
+
+        // Show notification
+        function showNotification(message, type = 'success') {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.style.animation = 'slideInRight 0.3s ease-out reverse';
+                setTimeout(() => {
+                    notification.remove();
+                }, 300);
+            }, 3000);
+        }
+
+        // Escape HTML to prevent XSS
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Add keyboard shortcut for going back (ESC key)
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                window.location.href = '/';
+            }
+        });
     </script>
 </body>
+</html>

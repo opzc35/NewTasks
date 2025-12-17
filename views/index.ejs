@@ -3,38 +3,222 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title> <%= title %> - NewTasks </title>
+    <title><%= title %> - NewTasks</title>
     <link rel="stylesheet" href="/stylesheets/style.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>✓</text></svg>">
 </head>
 <body>
-
     <div class="app-container">
-        <h1>我的任务</h1>
-        <div class="task-list" id="task-list"></div>
+        <h1>✨ 我的任务</h1>
+        
+        <div class="task-list" id="task-list">
+            <!-- Tasks will be loaded here dynamically -->
+            <div class="loading-container" id="loading">
+                <div class="loading"></div>
+                <p>加载任务中...</p>
+            </div>
+        </div>
+        
+        <div class="add-task" id="add-task" style="display: none;">
+            <input 
+                type="text" 
+                id="new-task-title" 
+                placeholder="📌 任务标题 (例如: 完成项目文档)"
+                maxlength="100"
+            >
+            <input 
+                type="text" 
+                id="new-task-description" 
+                placeholder="📝 任务描述 (例如: 编写用户手册和API文档)"
+                maxlength="500"
+            >
+            <button id="add-task-button" onclick="addTask()">
+                <span id="add-button-text">➕ 添加任务</span>
+            </button>
+        </div>
+        
+        <button id="show-add-task" class="show-add-task" onclick="toggleAddTask()">
+            <span id="button-text">📝 显示添加任务</span>
+        </button>
     </div>
+
     <script>
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            loadTasks();
+            
+            // Add keyboard shortcuts
+            document.getElementById('new-task-title').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    document.getElementById('new-task-description').focus();
+                }
+            });
+            
+            document.getElementById('new-task-description').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' && e.ctrlKey) {
+                    addTask();
+                }
+            });
+        });
+
+        // Toggle add task form
+        function toggleAddTask() {
+            const addTask = document.getElementById("add-task");
+            const showAddTask = document.getElementById("show-add-task");
+            const buttonText = document.getElementById("button-text");
+            
+            if (addTask.style.display === "none") {
+                addTask.style.display = "block";
+                buttonText.textContent = "🔼 隐藏添加任务";
+                setTimeout(() => {
+                    document.getElementById('new-task-title').focus();
+                }, 100);
+            } else {
+                addTask.style.display = "none";
+                buttonText.textContent = "📝 显示添加任务";
+            }
+        }
+
+        // Load tasks from API
         function loadTasks() {
             fetch('/api/tasks')
-                .then(response => response.json())
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('网络响应失败');
+                    }
+                    return response.json();
+                })
                 .then(data => {
-                    console.log(data);
                     const taskList = document.getElementById("task-list");
+                    const loading = document.getElementById("loading");
+                    
+                    if (loading) {
+                        loading.remove();
+                    }
+                    
                     taskList.innerHTML = '';
                     
-                    for (const task of data) {
-                        console.log(task.title);
-                        const taskElement = document.createElement("div");
-                        taskElement.innerHTML = `<a href="/watch/${task.id}">${task.title}</a>`;
-                        taskList.appendChild(taskElement);
+                    if (data.length === 0) {
+                        taskList.innerHTML = `
+                            <div class="empty-state">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                                </svg>
+                                <p style="font-weight: 600;">暂无任务</p>
+                                <p style="font-size: 14px;">点击下方按钮创建你的第一个任务</p>
+                            </div>
+                        `;
+                        return;
                     }
+                    
+                    data.forEach((task, index) => {
+                        const taskElement = document.createElement("div");
+                        taskElement.className = "task-item";
+                        taskElement.style.animationDelay = `${index * 0.05}s`;
+                        taskElement.innerHTML = `
+                            <a href="/watch/${task.id}">
+                                <strong>${escapeHtml(task.title)}</strong>
+                                ${task.description ? `<br><small style="color: var(--subtle-text-color); font-weight: 400;">${escapeHtml(task.description.substring(0, 60))}${task.description.length > 60 ? '...' : ''}</small>` : ''}
+                            </a>
+                        `;
+                        taskList.appendChild(taskElement);
+                    });
                 })
                 .catch(error => {
-                    console.error('Error loading tasks:', error);
+                    console.error('加载任务时出错:', error);
+                    const taskList = document.getElementById("task-list");
+                    taskList.innerHTML = `
+                        <div class="empty-state">
+                            <p style="color: var(--danger-color); font-weight: 600;">❌ 加载任务失败</p>
+                            <p style="font-size: 14px;">请检查网络连接或刷新页面重试</p>
+                        </div>
+                    `;
                 });
         }
-        loadTasks();
-        setInterval(loadTasks, 5000);
-    </script>
 
+        // Add new task
+        function addTask() {
+            const titleInput = document.getElementById("new-task-title");
+            const descriptionInput = document.getElementById("new-task-description");
+            const addButton = document.getElementById("add-task-button");
+            const buttonText = document.getElementById("add-button-text");
+            
+            const title = titleInput.value.trim();
+            const description = descriptionInput.value.trim();
+            
+            if (!title) {
+                showNotification('请输入任务标题', 'error');
+                titleInput.focus();
+                return;
+            }
+            
+            // Disable button and show loading
+            addButton.disabled = true;
+            buttonText.innerHTML = '<span class="loading"></span> 添加中...';
+            
+            const newTask = { title, description };
+            
+            fetch('/api/add', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(newTask)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('添加任务失败');
+                }
+                return response.text();
+            })
+            .then(() => {
+                titleInput.value = '';
+                descriptionInput.value = '';
+                loadTasks();
+                showNotification('✅ 任务添加成功！', 'success');
+                
+                // Hide add task form
+                const addTask = document.getElementById("add-task");
+                const showAddTask = document.getElementById("show-add-task");
+                const showButtonText = document.getElementById("button-text");
+                addTask.style.display = "none";
+                showButtonText.textContent = "📝 显示添加任务";
+            })
+            .catch(error => {
+                console.error('添加任务时出错:', error);
+                showNotification('❌ 添加任务失败，请重试', 'error');
+            })
+            .finally(() => {
+                // Re-enable button
+                addButton.disabled = false;
+                buttonText.textContent = '➕ 添加任务';
+            });
+        }
+
+        // Show notification
+        function showNotification(message, type = 'success') {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.style.animation = 'slideInRight 0.3s ease-out reverse';
+                setTimeout(() => {
+                    notification.remove();
+                }, 300);
+            }, 3000);
+        }
+
+        // Escape HTML to prevent XSS
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Auto-refresh tasks every 30 seconds
+        setInterval(loadTasks, 30000);
+    </script>
 </body>
 </html>
